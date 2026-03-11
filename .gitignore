@@ -1,0 +1,80 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache
+.coverage
+coverage.xml
+nosetests.xml
+hypothesis/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+
+# Виртуальное окружение
+venv/
+.venv/
+env/
+ENV/
+
+# IDE/Editor
+.vscode/
+.idea/
+*.code-workspace
+*.swp
+*.swo
+
+# Данные
+*.csv
+*.xlsx
+*.pkl
+*.joblib
+
+# OS files
+Thumbs.db
+
+# Делаем исключение для конкретной папки
+!/for_example/melb_data/melb_data.csv
+!/for_example/diabetes_BRFSS2015/diabetes_BRFSS2015.csv
+
+# Data and models (large/binary)
+dataset/
+trained_models/
+plots/
+accuracy_reports_tested_models/
+model_params/
+
+# === Plots and reports ===
+plots/
+figures/
+images/
+*.png
+*.jpg
+*.jpeg
+*.svg
+
+# Логи
+*.log
+logs/
+report.txt
+
+# Cache
+.ipynb_checkpoints/
+.pytest_cache/
+.cache/
+
+# Build artifacts
+build/
+dist/
+inference_models/diabetes_BRFSS2015_train_v5_Diabetes_012_inference.txt
+optuna_study.db
+test_env.py
+run_test.bat
+
