@@ -40,10 +40,6 @@ ENV/
 # OS files
 Thumbs.db
 
-# Делаем исключение для конкретной папки
-!/for_example/melb_data/melb_data.csv
-!/for_example/diabetes_BRFSS2015/diabetes_BRFSS2015.csv
-
 # Data and models (large/binary)
 dataset/
 trained_models/
