@@ -12,7 +12,8 @@ class Database:
                 CREATE TABLE IF NOT EXISTS users (
                     user_id INTEGER PRIMARY KEY,
                     name TEXT NOT NULL,
-                    birthday TEXT NOT NULL
+                    birthday TEXT NOT NULL,
+                    wishlist TEXT
                 )
             ''')
             # Создаем таблицу codes с нужной структурой
@@ -25,12 +26,12 @@ class Database:
             ''')
             await db.commit()
 
-    async def add_user(self, user_id: int, name: str, birthday: str):
+    async def add_user(self, user_id: int, name: str, birthday: str, wishlist: str = None):
         async with aiosqlite.connect(self.db_name) as db:
             await db.execute('''
-                INSERT OR REPLACE INTO users (user_id, name, birthday)
-                VALUES (?, ?, ?)
-            ''', (user_id, name, birthday))
+                INSERT OR REPLACE INTO users (user_id, name, birthday, wishlist)
+                VALUES (?, ?, ?, ?)
+            ''', (user_id, name, birthday, wishlist))
             await db.commit()
 
     async def user_exists(self, user_id: int) -> bool:
@@ -43,17 +44,17 @@ class Database:
     async def get_all_users(self):
         """Возвращает список всех пользователей."""
         async with aiosqlite.connect(self.db_name) as db:
-            async with db.execute('SELECT user_id as telegram_id, name, birthday FROM users') as cursor:
+            async with db.execute('SELECT user_id as telegram_id, name, birthday, wishlist FROM users') as cursor:
                 rows = await cursor.fetchall()
                 # Преобразуем в список словарей
-                return [{"telegram_id": r[0], "name": r[1], "birthday": r[2]} for r in rows]
+                return [{"telegram_id": r[0], "name": r[1], "birthday": r[2], "wishlist": r[3]} for r in rows]
 
 
     async def get_user(self, user_id: int):
         """Возвращает данные пользователя по его user_id."""
         async with aiosqlite.connect(self.db_name) as db:
-            async with db.execute('SELECT name, birthday FROM users WHERE user_id = ?', (user_id,)) as cursor:
+            async with db.execute('SELECT name, birthday, wishlist FROM users WHERE user_id = ?', (user_id,)) as cursor:
                 row = await cursor.fetchone()
                 if row:
-                    return {"name": row[0], "birthday": row[1]}
+                    return {"name": row[0], "birthday": row[1], "wishlist": row[2]}
                 return None

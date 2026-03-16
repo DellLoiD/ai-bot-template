@@ -5,6 +5,7 @@ class Registration(StatesGroup):
     wait_name = State()
     wait_birthday = State()
     wait_extra = State()
+    wait_wishlist = State()
 
 
 class CodeState(StatesGroup):

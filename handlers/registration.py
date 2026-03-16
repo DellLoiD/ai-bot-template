@@ -39,3 +39,18 @@ async def process_code(message: types.Message, state: FSMContext):
         return  # Важно выйти, чтобы не упало в else
     else:
         await message.answer("❌ Неверный код. Попробуйте еще раз или обратитесь к администратору.")
+
+# Обработка ввода имени
+@router.message(Registration.wait_name)
+async def process_name(message: types.Message, state: FSMContext):
+    name = message.text.strip()
+    
+    # Проверка, что имя не пустое
+    if not name:
+        await message.answer("❌ Имя не может быть пустым. Пожалуйста, введите свое имя:")
+        return
+    
+    # Сохраняем имя и переходим к следующему шагу
+    await state.update_data(name=name)
+    await message.answer("Отлично! Теперь введите вашу дату рождения в формате ДД.ММ.ГГГГ (например, 01.01.2000):")
+    await state.set_state(Registration.wait_birthday)

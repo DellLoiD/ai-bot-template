@@ -1,25 +1,19 @@
 #Логика: Регистрация нового пользователя в базе данных, 
 # проверка реферальных ссылок и отправка первого приветственного сообщения с кнопками.
 from aiogram.fsm.state import StatesGroup, State
-from aiogram.fsm.context import FSMContext
+from states import Registration
 from aiogram import Router, types, F
 from aiogram.filters import CommandStart, Command
+from aiogram.fsm.context import FSMContext
 from loader import db, bot
 from handlers.registration import CodeState
-from database.methods import use_code
-
-
 from keyboards.reply import get_main_keyboard
 from keyboards.admin import get_admin_keyboard
 from config import ADMIN_ID
-
-# 1. Определяем этапы анкеты (универсальный класс)
-class Registration(StatesGroup):
-    wait_name = State()      # Ждем имя
-    wait_birthday = State()  # Ждем дату рождения
-    wait_extra = State()     # Ждем доп. инфо (например, пожелания)
+import aiosqlite
 
 router = Router()
+ #1. Определяем этапы анкеты (универсальный класс)
 
 # 2. Команда /start
 @router.message(CommandStart())
@@ -30,51 +24,66 @@ async def cmd_start(message: types.Message, state: FSMContext):
         await message.answer("🔐 Добро пожаловать, администратор! Используйте меню ниже.", reply_markup=get_admin_keyboard())
         return
 
-    # Для обычного пользователя показываем только кнопку проверки регистрации
-    await message.answer("Нажмите кнопку ниже, чтобы проверить регистрацию.", reply_markup=get_main_keyboard())
+    # Проверяем, есть ли пользователь в базе
+    user = await db.get_user(message.from_user.id)
+    if user:
+        # Пользователь уже зарегистрирован, предлагаем ввести код
+        await message.answer("Вы уже зарегистрированы! Введите код доступа:", reply_markup=get_main_keyboard())
+        # Здесь нужно перейти к состоянию ожидания кода
+        await state.set_state(CodeState.waiting_for_code)
+        return
 
-# 3. Ловим имя и переходим к дате
-@router.message(Registration.wait_name)
-async def process_name(message: types.Message, state: FSMContext):
-    name = message.text.strip()
+    # Для пользователя, который заходит впервые (его нет в базе)
+    await message.answer("Для продолжения введите код доступа:")
+    await state.set_state(CodeState.waiting_for_code)
+
+@router.message(Registration.wait_wishlist)
+async def process_wishlist(message: types.Message, state: FSMContext):
+    wishlist = message.text.strip()
     
-    # Проверка на валидность имени: только буквы и пробелы
-    if not name.replace(' ', '').isalpha():
-        await message.answer("❌ Имя должно содержать только буквы. Пожалуйста, введите корректное имя:")
+    # Ограничиваем длину пожеланий до 200 символов
+    if len(wishlist) > 200:
+        await message.answer("❌ Слишком длинное сообщение! Пожелания не должны превышать 200 символов. Пожалуйста, сократите текст и отправьте снова:")
         return
     
-    await state.update_data(name=name) # Сохраняем имя во временную память
-    print(f"[DEBUG] Имя пользователя '{name}' сохранено. Переход к вводу даты рождения.")
-    await message.answer(f"Приятно познакомиться, {name}! Теперь введите дату рождения (ДД.ММ.ГГГГ):")
-    await state.set_state(Registration.wait_birthday)
-
-# 4. Ловим дату и завершаем (или идем дальше)
+    # Проверяем, что пожелание не пустое
+    if not wishlist:
+        await message.answer("❌ Пожелания не могут быть пустыми. Пожалуйста, напишите, что бы вы хотели получить в подарок:")
+        return
+    
+    # Получаем все данные из состояния
+    user_data = await state.get_data()
+    user_id = message.from_user.id
+    name = user_data.get("name")
+    birthday = user_data.get("birthday")
+    
+    # Обновляем структуру таблицы и сохраняем данные
+    await db.create_tables()
+    await db.add_user(user_id, name, birthday, wishlist)
+    
+    await message.answer(f"🎉 Отлично, {name}! Ваши пожелания сохранены.\n\n🎁 {wishlist}")
+    await state.clear() 
 @router.message(Registration.wait_birthday)
 async def process_birthday(message: types.Message, state: FSMContext):
     # Валидация формата даты (ДД.ММ.ГГГГ)
     import re
-    date_pattern = r'^\d{2}\.\d{2}\.\d{4}$'
-    birthday = message.text.strip()
+    date_pattern = r'^\d{2}\.\d{2}\.\d{4}$'  # Исправлено: добавлен $ и закрыта строка
+    birthday = message.text.strip()  # Исправлено: сначала получаем значение
     
     if not re.match(date_pattern, birthday):
         await message.answer("❌ Неверный формат даты. Пожалуйста, введите дату в формате ДД.ММ.ГГГГ (например, 01.01.2000):")
         return
     
-    user_data = await state.get_data() # Достаем всё, что сохранили ранее
+    # Получаем имя из состояния
+    user_data = await state.get_data()
     name = user_data.get("name")
     
-    # Логирование перед сохранением
+    # Логирование
     print(f"[DEBUG] Попытка сохранить данные пользователя: ID={message.from_user.id}, Имя={name}, ДР={birthday}")
     
-    # СОХРАНЯЕМ В БАЗУ
-    await db.add_user(message.from_user.id, name, birthday)
+    # Сохраняем имя и дату рождения
+    await state.update_data(name=name, birthday=birthday)
     
-    await message.answer(f"Данные сохранены! Теперь я знаю, что у {name} праздник {birthday}.")
-    await state.clear()
-    
-    # Логирование завершения
-    print(f"[DEBUG] Регистрация завершена для пользователя: {name}")
-    
-    # Отправляем сообщение с клавиатурой для пользователя
-    await message.answer(f"Готово! {name}, я запомнил твой день рождения: {birthday}", reply_markup=get_main_keyboard())
-    await state.clear() # Очищаем состояния
+    # Запрашиваем пожелания к подарку
+    await message.answer(f"Отлично, {name}! Теперь напишите, что бы вы хотели получить в подарок (максимум 200 символов):")
+    await state.set_state(Registration.wait_wishlist)
