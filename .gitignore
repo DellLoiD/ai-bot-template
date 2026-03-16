@@ -36,6 +36,7 @@ ENV/
 *.xlsx
 *.pkl
 *.joblib
+*.env
 
 # OS files
 Thumbs.db
