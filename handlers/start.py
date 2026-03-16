@@ -27,10 +27,8 @@ async def cmd_start(message: types.Message, state: FSMContext):
     # Проверяем, есть ли пользователь в базе
     user = await db.get_user(message.from_user.id)
     if user:
-        # Пользователь уже зарегистрирован, предлагаем ввести код
-        await message.answer("Вы уже зарегистрированы! Введите код доступа:", reply_markup=get_main_keyboard())
-        # Здесь нужно перейти к состоянию ожидания кода
-        await state.set_state(CodeState.waiting_for_code)
+        # Пользователь уже зарегистрирован, показываем его данные
+        await message.answer(f"Вы уже зарегистрированы!\n\nИмя: {user['name']}\nДата рождения: {user['birthday']}\nПожелания: {user['wishlist'] if user['wishlist'] else 'Не указаны'}", reply_markup=get_main_keyboard())
         return
 
     # Для пользователя, который заходит впервые (его нет в базе)
@@ -57,12 +55,15 @@ async def process_wishlist(message: types.Message, state: FSMContext):
     name = user_data.get("name")
     birthday = user_data.get("birthday")
     
-    # Обновляем структуру таблицы и сохраняем данные
+    # Сохраняем пожелания в состояние
+    await state.update_data(wishlist=wishlist)
+    
+    # Сохраняем пользователя в базу данных
     await db.create_tables()
     await db.add_user(user_id, name, birthday, wishlist)
     
     await message.answer(f"🎉 Отлично, {name}! Ваши пожелания сохранены.\n\n🎁 {wishlist}")
-    await state.clear() 
+    await state.clear()
 @router.message(Registration.wait_birthday)
 async def process_birthday(message: types.Message, state: FSMContext):
     # Валидация формата даты (ДД.ММ.ГГГГ)
