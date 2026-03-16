@@ -7,6 +7,7 @@ from handlers.admin import router as admin_router
 from handlers.callbacks import router as callbacks_router
 from handlers.registration import router as registration_router
 from handlers.common import router as common_router
+from handlers.birthdays import check_upcoming_birthdays
 from states import Registration, CodeState, BroadcastState
 
 async def main():
@@ -19,6 +20,10 @@ async def main():
     # Создаём таблицы (включая таблицу codes)
     await db.create_tables()
     print("Бот запущен...")
+    
+    # Запускаем задачу проверки дней рождения в фоне
+    asyncio.create_task(check_upcoming_birthdays())
+    
     await dp.start_polling(bot)
 
 
